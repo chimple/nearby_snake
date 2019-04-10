@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -122,7 +123,7 @@ public class NearbyHelper {
                             logD("Connected : " + endpointId + " ," + result.toString());
                             connectedToEndpoint(mPendingConnections.remove(endpointId));
                             _instance.setState(NearbyHelper.State.STOP_DISCOVERING);
-                            if(_instance.mTeacher) {
+                            if (_instance.mTeacher) {
                                 _instance.setState(NearbyHelper.State.STOP_ADVERTISING);
                             } else {
                                 _instance.setState(NearbyHelper.State.ADVERTISING);
@@ -231,7 +232,7 @@ public class NearbyHelper {
     }
 
     public String getLocalAdvertiseName() {
-        if(this.advertisingName == null) {
+        if (this.advertisingName == null) {
             this.advertisingName = "1";
         } else {
             this.advertisingName = this.advertisingName + ".1";
@@ -320,7 +321,7 @@ public class NearbyHelper {
     protected void startDiscovering() {
         logD("calling startDiscovering ...with strategy" + info.getStrategy());
         if (discoveryTimeOutTimer == null && !mIsDiscovering) {
-            startDiscoveryTimeOutTimer(30 * 1000);
+            startDiscoveryTimeOutTimer(_instance.getRandomNumberInRange(15 * 1000, 10 * 1000));
         }
         mIsDiscovering = true;
         mDiscoveredEndpoints.clear();
@@ -338,7 +339,7 @@ public class NearbyHelper {
                                                 "onEndpointFound(endpointId=%s, serviceId=%s, endpointName=%s)",
                                                 endpointId, info.getServiceId(), info.getEndpointName()));
 
-                                logD("service Id:"  + SERVICE_ID);
+                                logD("service Id:" + SERVICE_ID);
                                 if (SERVICE_ID.equals(info.getServiceId())) {
                                     mIsDiscovered = true;
                                     discoveryFailedTimes = 0;
@@ -459,7 +460,7 @@ public class NearbyHelper {
                                     }
                                 });
             }
-        }, 5 * 1000);
+        }, _instance.getRandomNumberInRange(5 * 1000, 5 * 1000));
 
 
     }
@@ -709,8 +710,19 @@ public class NearbyHelper {
                 NearbyHelper.setBluetooth(true);
                 _instance.startDiscovering();
             }
-        }, 5 * 1000);
+        }, getRandomNumberInRange(5 * 1000, 5 * 1000));
     }
+
+    private static int getRandomNumberInRange(int min, int max) {
+
+        if (min >= max) {
+            throw new IllegalArgumentException("max must be greater than min");
+        }
+
+        Random r = new Random();
+        return r.nextInt((max - min) + 1) + min;
+    }
+
 
     public static boolean setBluetooth(boolean enable) {
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
