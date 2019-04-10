@@ -321,7 +321,7 @@ public class NearbyHelper {
     protected void startDiscovering() {
         logD("calling startDiscovering ...with strategy" + info.getStrategy());
         if (discoveryTimeOutTimer == null && !mIsDiscovering) {
-            startDiscoveryTimeOutTimer(_instance.getRandomNumberInRange(15 * 1000, 10 * 1000));
+            startDiscoveryTimeOutTimer(_instance.getRandomNumberInRange(10 * 1000, 15 * 1000));
         }
         mIsDiscovering = true;
         mDiscoveredEndpoints.clear();
@@ -460,7 +460,7 @@ public class NearbyHelper {
                                     }
                                 });
             }
-        }, _instance.getRandomNumberInRange(5 * 1000, 5 * 1000));
+        }, _instance.getRandomNumberInRange(5 * 1000, 6 * 1000));
 
 
     }
@@ -710,15 +710,10 @@ public class NearbyHelper {
                 NearbyHelper.setBluetooth(true);
                 _instance.startDiscovering();
             }
-        }, getRandomNumberInRange(5 * 1000, 5 * 1000));
+        }, getRandomNumberInRange(5 * 1000, 6 * 1000));
     }
 
     private static int getRandomNumberInRange(int min, int max) {
-
-        if (min >= max) {
-            throw new IllegalArgumentException("max must be greater than min");
-        }
-
         Random r = new Random();
         return r.nextInt((max - min) + 1) + min;
     }
