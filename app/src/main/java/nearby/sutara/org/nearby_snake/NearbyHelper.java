@@ -201,11 +201,18 @@ public class NearbyHelper {
         mConnectionsClient = Nearby.getConnectionsClient(this.context);
     }
 
-    public static NearbyHelper getInstance(NearbyInfo info, Context context) {
+    public static NearbyHelper getInstance(NearbyInfo info, Context context, boolean shouldStartAdv) {
         if (_instance == null) {
             _instance = new NearbyHelper(info, context);
+            _instance.setBluetooth(true);
+            if (shouldStartAdv) {
+                _instance.setTeacher(true);
+                _instance.setState(State.ADVERTISING);
+            } else {
+                _instance.setTeacher(false);
+                _instance.setState(State.DISCOVERING);
+            }
         }
-
         return _instance;
     }
 
@@ -234,8 +241,6 @@ public class NearbyHelper {
     public String getLocalAdvertiseName() {
         if (this.advertisingName == null) {
             this.advertisingName = "1";
-        } else {
-            this.advertisingName = this.advertisingName + ".1";
         }
         return this.advertisingName;
     }
@@ -268,7 +273,7 @@ public class NearbyHelper {
                             @Override
                             public void onSuccess(Void unusedResult) {
                                 logD("Now advertising endpoint " + localEndpointName);
-                                info.onAdvertisingStarted("Now advertising endpoint: " + localEndpointName);
+                                info.onAdvertisingStarted(localEndpointName);
                             }
                         })
                 .addOnFailureListener(

@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
 
     private Toolbar toolbar;
     private TextView consoleView;
+    private TextView console;
     private TextView logView;
     private EditText messageToSendField;
     private MainActivity that = this;
@@ -69,9 +70,8 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
         this.toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
-        this.isTeacher = false;
-        this.helper = NearbyHelper.getInstance(this, this);
-        this.helper.setBluetooth(true);
+        this.isTeacher = true;
+        this.helper = NearbyHelper.getInstance(this, this, this.isTeacher);
     }
 
     protected void onStart() {
@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
                 requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_REQUIRED_PERMISSIONS);
             }
         }
-
+        this.console = (TextView) findViewById(R.id.console);
         this.consoleView = (TextView) findViewById(R.id.consoleTextView);
         this.logView = (TextView) findViewById(R.id.logTextView);
         this.messageToSendField = (EditText) findViewById(R.id.messageToSend);
@@ -92,18 +92,15 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
             @Override
             public void run() {
                 if (that.isTeacher) {
-                    that.notifyUI("Connected as Teacher -> ", " --------> ", LOG_TYPE);
-                    that.helper.setTeacher(true);
-                    that.helper.setState(NearbyHelper.State.ADVERTISING);
+                    that.notifyUI("Connecting as Teacher -> ", " --------> ", LOG_TYPE);
                 } else {
-                    that.helper.setTeacher(false);
-                    that.notifyUI("Connected as Student -> ", " --------> ", LOG_TYPE);
-                    that.helper.setState(NearbyHelper.State.DISCOVERING);
+                    that.notifyUI("Connecting as Student -> ", " --------> ", LOG_TYPE);
                 }
             }
         }, 2000);
 
     }
+
 
     public void notifyUI(String message, String fromIP, String type) {
 
@@ -117,7 +114,8 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
 
     protected void onDestroy() {
         super.onDestroy();
-
+        this.helper.disconnectFromAllEndpoints();
+        this.helper.stopAllEndpoints();
     }
 
 
@@ -203,6 +201,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
 
     @Override
     public void onAdvertisingStarted(String name) {
+        this.console.setText("Console - My Adv ID: " + name);
         notifyUI("onAdvertisingStarted " + name, "-------->", LOG_TYPE);
     }
 
@@ -214,6 +213,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
     @Override
     public void onConnectionInitiated(EndPoint endpoint, ConnectionInfo connectionInfo) {
         helper.acceptConnection(endpoint);
+        helper.setLocalAdvertiseName(endpoint.getName() + ".1");
         notifyUI("onConnectionInitiated " + endpoint.getName(), "-------->", LOG_TYPE);
     }
 
@@ -246,12 +246,12 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
 
     @Override
     public void onEndpointConnected(EndPoint endpoint) {
-        notifyUI("onEndpointConnected id:" + endpoint.getId() + " name:" + endpoint.getName(), " --------->", LOG_TYPE);
+        notifyUI("*******onEndpointConnected********* id:" + endpoint.getId() + " name:" + endpoint.getName(), " --------->", LOG_TYPE);
     }
 
     @Override
     public void onEndpointDisconnected(EndPoint endpoint) {
-        notifyUI("onEndpointDisconnected id:" + endpoint.getId() + " name:" + endpoint.getName(), " --------->", LOG_TYPE);
+        notifyUI("********onEndpointDisconnected******  id:" + endpoint.getId() + " name:" + endpoint.getName(), " --------->", LOG_TYPE);
     }
 
     @Override
@@ -276,8 +276,6 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
     protected void onStop() {
         super.onStop();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
-        this.helper.disconnectFromAllEndpoints();
-        this.helper.stopAllEndpoints();
     }
 
     /**
