@@ -126,7 +126,13 @@ public class NearbyHelper {
                             if (_instance.mTeacher) {
                                 _instance.setState(NearbyHelper.State.STOP_ADVERTISING);
                             } else {
-                                _instance.setState(NearbyHelper.State.ADVERTISING);
+                                if (ismAdvertisingForChild) {
+                                    logD("Connected Child: " + endpointId + " ," + result.toString());
+                                    _instance.setState(State.STOP_ADVERTISING);
+                                    ismAdvertisingForChild = false;
+                                } else {
+                                    _instance.setState(NearbyHelper.State.ADVERTISING_FOR_CHILD);
+                                }
                             }
                             break;
                         case ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT:
@@ -185,6 +191,7 @@ public class NearbyHelper {
      * True if we are advertising.
      */
     private boolean mIsAdvertising = false;
+    private boolean ismAdvertisingForChild = false;
 
 
     /**
@@ -247,6 +254,42 @@ public class NearbyHelper {
 
     public void setLocalAdvertiseName(String name) {
         this.advertisingName = name;
+    }
+
+
+    public void startAdvertisingForChild() {
+        mIsAdvertising = true;
+        ismAdvertisingForChild = true;
+        final String localEndpointName = this.getLocalAdvertiseName();
+
+        logD("startAdvertising ... end point " + localEndpointName + " with strategy " + info.getStrategy());
+        AdvertisingOptions advertisingOptions =
+                new AdvertisingOptions.Builder().setStrategy(info.getStrategy()).build();
+
+        mConnectionsClient
+                .startAdvertising(
+                        localEndpointName,
+                        SERVICE_ID,
+                        mConnectionLifecycleCallback,
+                        advertisingOptions)
+                .addOnSuccessListener(
+                        new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void unusedResult) {
+                                logD("Now advertising endpoint " + localEndpointName);
+                                info.onAdvertisingStarted(localEndpointName);
+                            }
+                        })
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(Exception e) {
+                                mIsAdvertising = false;
+                                ismAdvertisingForChild = false;
+                                logW("startAdvertising() failed.", e);
+                                info.onAdvertisingFailed();
+                            }
+                        });
     }
 
     /**
@@ -326,7 +369,7 @@ public class NearbyHelper {
     protected void startDiscovering() {
         logD("calling startDiscovering ...with strategy" + info.getStrategy());
         if (discoveryTimeOutTimer == null && !mIsDiscovering) {
-            startDiscoveryTimeOutTimer(_instance.getRandomNumberInRange(10 * 1000, 15 * 1000));
+            startDiscoveryTimeOutTimer(10 * 1000);
         }
         mIsDiscovering = true;
         mDiscoveredEndpoints.clear();
@@ -346,6 +389,7 @@ public class NearbyHelper {
 
                                 logD("service Id:" + SERVICE_ID);
                                 if (SERVICE_ID.equals(info.getServiceId())) {
+                                    _instance.setLocalAdvertiseName(info.getEndpointName() + ".1");
                                     mIsDiscovered = true;
                                     discoveryFailedTimes = 0;
                                     if (discoveryTimeOutTimer != null) {
@@ -465,7 +509,7 @@ public class NearbyHelper {
                                     }
                                 });
             }
-        }, _instance.getRandomNumberInRange(5 * 1000, 6 * 1000));
+        }, 1 * 1000);
 
 
     }
@@ -588,6 +632,8 @@ public class NearbyHelper {
                 return "STOP_DISCOVERING";
             case ADVERTISING:
                 return "ADVERTISING";
+            case ADVERTISING_FOR_CHILD:
+                return "ADVERTISING_FOR_CHILD";
             case CONNECTED:
                 return "CONNECTED";
             case UNKNOWN:
@@ -643,6 +689,13 @@ public class NearbyHelper {
                 // disconnectFromAllEndpoints();
                 startAdvertising();
                 break;
+            case ADVERTISING_FOR_CHILD:
+                if (isDiscovering()) {
+                    stopDiscovering();
+                }
+                // disconnectFromAllEndpoints();
+                startAdvertisingForChild();
+                break;
             case CONNECTED:
                 if (isDiscovering()) {
                     stopDiscovering();
@@ -665,6 +718,7 @@ public class NearbyHelper {
         UNKNOWN,
         DISCOVERING,
         ADVERTISING,
+        ADVERTISING_FOR_CHILD,
         CONNECTED,
         STOP_DISCOVERING,
         STOP_ADVERTISING,
@@ -707,7 +761,7 @@ public class NearbyHelper {
         }
     }
 
-    private void resetDiscovery() {
+    public void resetDiscovery() {
         stopDiscovering();
         new Timer().schedule(new TimerTask() {
             @Override
@@ -715,7 +769,7 @@ public class NearbyHelper {
                 NearbyHelper.setBluetooth(true);
                 _instance.startDiscovering();
             }
-        }, getRandomNumberInRange(5 * 1000, 6 * 1000));
+        }, 5 * 1000);
     }
 
     private static int getRandomNumberInRange(int min, int max) {

@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
         this.toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setLogo(R.mipmap.ic_launcher);
-        this.isTeacher = true;
+        this.isTeacher = false;
         this.helper = NearbyHelper.getInstance(this, this, this.isTeacher);
     }
 
@@ -213,7 +213,6 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
     @Override
     public void onConnectionInitiated(EndPoint endpoint, ConnectionInfo connectionInfo) {
         helper.acceptConnection(endpoint);
-        helper.setLocalAdvertiseName(endpoint.getName() + ".1");
         notifyUI("onConnectionInitiated " + endpoint.getName(), "-------->", LOG_TYPE);
     }
 
@@ -241,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
     @Override
     public void onConnectionFailed(EndPoint endpoint, int numberOfTimes) {
         notifyUI("onConnectionFailed id:" + endpoint.getId() + " name:" + endpoint.getName(), " --------->", LOG_TYPE);
-        this.helper.setState(NearbyHelper.State.DISCOVERING);
+        this.helper.resetDiscovery();
     }
 
     @Override
