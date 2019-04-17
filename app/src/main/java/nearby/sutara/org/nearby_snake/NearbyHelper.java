@@ -47,6 +47,7 @@ public class NearbyHelper {
     private static CountDownTimer discoveryTimeOutTimer = null;
 
     private Context context;
+    private int howManyTimeDiscoveryFail = 2;
     private int connectionFailedTimes = 0;
     public int discoveryFailedTimes = 0;
     private boolean mDiscoverAsTeacher = false;
@@ -182,6 +183,7 @@ public class NearbyHelper {
                     _instance.info.notifyMessage("disconnected from:" + endpoint.getName());
 
                     if ((_instance.getLocalAdvertiseName() + ".1").equals(endpoint.getName())) {
+                        _instance.howManyTimeDiscoveryFail = 5;
                         _instance.setState(State.DISCOVERING_AS_TEACHER);
                     }
                 }
@@ -392,6 +394,7 @@ public class NearbyHelper {
             startDiscoveryTimeOutTimer(10 * 1000);
         }
         mIsDiscovering = true;
+        mIsDiscovered = false;
         mDiscoveredEndpoints.clear();
         DiscoveryOptions discoveryOptions =
                 new DiscoveryOptions.Builder().setStrategy(info.getStrategy()).build();
@@ -794,14 +797,15 @@ public class NearbyHelper {
         }
         _instance.info.onDiscoveryFailed();
 
-        if (!isManuallyStoppedDiscovery && _instance.mDiscoverAsTeacher && discoveryFailedTimes >= 1) {
+        if (!isManuallyStoppedDiscovery && _instance.mDiscoverAsTeacher && discoveryFailedTimes >= howManyTimeDiscoveryFail) {
             _instance.resetAsTeacher();
-        } else if (!isManuallyStoppedDiscovery && !_instance.mDiscoverAsTeacher) {
+        } else if (!isManuallyStoppedDiscovery) {
             _instance.resetDiscovery();
         }
     }
 
     public void resetAsTeacher() {
+        logD("resetAsTeacher");
         _instance.setState(State.STOP_DISCOVERING);
         new Timer().schedule(new TimerTask() {
             @Override
@@ -811,7 +815,16 @@ public class NearbyHelper {
         }, 5 * 1000);
     }
 
+    public void resetOnConnectionFailed() {
+        if(_instance.mDiscoverAsTeacher) {
+            _instance.resetAsTeacher();
+        } else {
+            _instance.resetDiscovery();
+        }
+    }
+
     public void resetDiscovery() {
+        logD("resetDiscovery");
         stopDiscovering();
         new Timer().schedule(new TimerTask() {
             @Override

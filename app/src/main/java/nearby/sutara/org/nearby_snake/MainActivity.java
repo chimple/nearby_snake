@@ -240,7 +240,7 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
     @Override
     public void onConnectionFailed(EndPoint endpoint, int numberOfTimes) {
         notifyUI("onConnectionFailed id:" + endpoint.getId() + " name:" + endpoint.getName(), " --------->", LOG_TYPE);
-        this.helper.resetDiscovery();
+        this.helper.resetOnConnectionFailed();
     }
 
     @Override
