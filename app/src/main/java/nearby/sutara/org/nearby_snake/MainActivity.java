@@ -254,6 +254,11 @@ public class MainActivity extends AppCompatActivity implements NearbyInfo {
     }
 
     @Override
+    public void notifyMessage(String message) {
+        notifyUI("********notifyMessage******  :" + message, " --------->", LOG_TYPE);
+    }
+
+    @Override
     public void onReceive(EndPoint endpoint, Payload payload) {
         if (payload.getType() == Payload.Type.BYTES) {
             handleBytesPayload(endpoint, payload);

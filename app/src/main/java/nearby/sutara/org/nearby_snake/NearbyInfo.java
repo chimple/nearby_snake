@@ -59,4 +59,6 @@ public interface NearbyInfo {
     void onReceive(EndPoint endpoint, Payload payload);
 
     void onStopAdvertising();
+
+    void notifyMessage(String message);
 }

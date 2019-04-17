@@ -49,6 +49,8 @@ public class NearbyHelper {
     private Context context;
     private int connectionFailedTimes = 0;
     public int discoveryFailedTimes = 0;
+    private boolean mDiscoverAsTeacher = false;
+    private String currentAdvertisingEndPoint = null;
     /**
      * The devices we've discovered near us.
      */
@@ -123,13 +125,15 @@ public class NearbyHelper {
                             logD("Connected : " + endpointId + " ," + result.toString());
                             connectedToEndpoint(mPendingConnections.remove(endpointId));
                             _instance.setState(NearbyHelper.State.STOP_DISCOVERING);
+                            _instance.setDiscoveryAsTeacher(false); //reset
                             if (_instance.mTeacher) {
                                 _instance.setState(NearbyHelper.State.STOP_ADVERTISING);
+                                _instance.setTeacher(false); // no longer teacher
                             } else {
                                 if (ismAdvertisingForChild) {
                                     logD("Connected Child: " + endpointId + " ," + result.toString());
                                     _instance.setState(State.STOP_ADVERTISING);
-                                    ismAdvertisingForChild = false;
+                                    _instance.setAdvertisingForChild(false); //reset
                                 } else {
                                     _instance.setState(NearbyHelper.State.ADVERTISING_FOR_CHILD);
                                 }
@@ -172,6 +176,14 @@ public class NearbyHelper {
                     logD(String.format("disconnectedFromEndpoint(endpoint=%s)", endpoint));
                     mEstablishedConnections.remove(endpoint.getId());
                     _instance.info.onEndpointDisconnected(endpoint);
+
+                    // i am 1.1 and got message disconnected from 1.1.1
+                    _instance.info.notifyMessage("local advertising point:" + _instance.getLocalAdvertiseName());
+                    _instance.info.notifyMessage("disconnected from:" + endpoint.getName());
+
+                    if ((_instance.getLocalAdvertiseName() + ".1").equals(endpoint.getName())) {
+                        _instance.setState(State.DISCOVERING_AS_TEACHER);
+                    }
                 }
 
                 @Override
@@ -214,13 +226,21 @@ public class NearbyHelper {
             _instance.setBluetooth(true);
             if (shouldStartAdv) {
                 _instance.setTeacher(true);
-                _instance.setState(State.ADVERTISING);
+                _instance.setState(State.DISCOVERING_AS_TEACHER);
             } else {
                 _instance.setTeacher(false);
                 _instance.setState(State.DISCOVERING);
             }
         }
         return _instance;
+    }
+
+    public void setAdvertisingForChild(boolean b) {
+        this.ismAdvertisingForChild = b;
+    }
+
+    public void setDiscoveryAsTeacher(boolean b) {
+        mDiscoverAsTeacher = b;
     }
 
     public Map<String, EndPoint> getDiscoveredEndpoints() {
@@ -445,6 +465,11 @@ public class NearbyHelper {
     public void stopDiscovering() {
         logD("stopDiscovering ...");
         mIsDiscovering = false;
+        if (discoveryTimeOutTimer != null) {
+            discoveryTimeOutTimer.cancel();
+            discoveryTimeOutTimer = null;
+        }
+
         mConnectionsClient.stopDiscovery();
     }
 
@@ -596,15 +621,17 @@ public class NearbyHelper {
         Set<String> tree_Set = new TreeSet<String>(endpoints);
         logD("all connected end points: " + tree_Set);
         logD("sending message" + payload.toString() + " to all end points");
-        mConnectionsClient
-                .sendPayload(new ArrayList<>(endpoints), payload)
-                .addOnFailureListener(
-                        new OnFailureListener() {
-                            @Override
-                            public void onFailure(Exception e) {
-                                logW("sendPayload() failed.", e);
-                            }
-                        });
+        if (!tree_Set.isEmpty()) {
+            mConnectionsClient
+                    .sendPayload(new ArrayList<>(endpoints), payload)
+                    .addOnFailureListener(
+                            new OnFailureListener() {
+                                @Override
+                                public void onFailure(Exception e) {
+                                    logW("sendPayload() failed.", e);
+                                }
+                            });
+        }
     }
 
 
@@ -668,6 +695,15 @@ public class NearbyHelper {
     private void onStateChanged(State newState) {
         // Update Nearby Connections to the new state.
         switch (newState) {
+            case DISCOVERING_AS_TEACHER:
+                _instance.setDiscoveryAsTeacher(true);
+                logD("On state change DISCOVERING_AS_TEACHER");
+                if (isAdvertising()) {
+                    stopAdvertising();
+                }
+                startDiscovering();
+                break;
+
             case DISCOVERING:
                 logD("On state change DISCOVERING");
                 if (isAdvertising()) {
@@ -716,6 +752,7 @@ public class NearbyHelper {
      */
     public enum State {
         UNKNOWN,
+        DISCOVERING_AS_TEACHER,
         DISCOVERING,
         ADVERTISING,
         ADVERTISING_FOR_CHILD,
@@ -736,11 +773,12 @@ public class NearbyHelper {
 
                     public void onFinish() {
                         discoveryTimeOutTimer = null;
-                        if (!mIsDiscovered) {
+                        if (!_instance.mIsDiscovered) {
                             _instance.failedDiscovery();
                         }
                     }
                 }.start();
+
             }
         });
     }
@@ -755,10 +793,22 @@ public class NearbyHelper {
             discoveryTimeOutTimer = null;
         }
         _instance.info.onDiscoveryFailed();
-        if (!isManuallyStoppedDiscovery) {
-            NearbyHelper.setBluetooth(false);
+
+        if (!isManuallyStoppedDiscovery && _instance.mDiscoverAsTeacher && discoveryFailedTimes >= 1) {
+            _instance.resetAsTeacher();
+        } else if (!isManuallyStoppedDiscovery && !_instance.mDiscoverAsTeacher) {
             _instance.resetDiscovery();
         }
+    }
+
+    public void resetAsTeacher() {
+        _instance.setState(State.STOP_DISCOVERING);
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                _instance.setState(State.ADVERTISING);
+            }
+        }, 5 * 1000);
     }
 
     public void resetDiscovery() {
@@ -766,7 +816,6 @@ public class NearbyHelper {
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-                NearbyHelper.setBluetooth(true);
                 _instance.startDiscovering();
             }
         }, 5 * 1000);
