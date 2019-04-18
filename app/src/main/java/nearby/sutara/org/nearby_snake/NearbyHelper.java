@@ -51,7 +51,6 @@ public class NearbyHelper {
     private int connectionFailedTimes = 0;
     public int discoveryFailedTimes = 0;
     private boolean mDiscoverAsTeacher = false;
-    private String currentAdvertisingEndPoint = null;
     /**
      * The devices we've discovered near us.
      */
@@ -181,9 +180,10 @@ public class NearbyHelper {
                     // i am 1.1 and got message disconnected from 1.1.1
                     _instance.info.notifyMessage("local advertising point:" + _instance.getLocalAdvertiseName());
                     _instance.info.notifyMessage("disconnected from:" + endpoint.getName());
+                    _instance.info.notifyMessage("mEstablishedConnections active connections:" + mEstablishedConnections.size());
 
                     if ((_instance.getLocalAdvertiseName() + ".1").equals(endpoint.getName())) {
-                        _instance.howManyTimeDiscoveryFail = 5;
+                        _instance.howManyTimeDiscoveryFail = 3;
                         _instance.setState(State.DISCOVERING_AS_TEACHER);
                     }
                 }
